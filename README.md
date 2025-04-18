@@ -44,6 +44,11 @@ Replace [platform] with the name of the platform to build. The app code will be 
 - android
 - chromium
 - firefox
+- opera
+
+### Debugging in Opera
+
+Once you have built xBrowserSync for Opera, browse to `opera://extensions`, enable Developer mode, click "Load unpacked" and browse to `build/opera` within the xBrowserSync source directory.
 
 ### Debugging in Chrome
 

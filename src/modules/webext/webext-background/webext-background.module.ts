@@ -26,13 +26,26 @@ export class WebExtBackgroundModule {}
   ])
   .factory('$exceptionHandler', ['$injector', 'AlertService', 'LogService', ExceptionHandlerService.Factory]);
 
-// Set synchronous event handlers
-browser.runtime.onInstalled.addListener((details) => {
-  // Store event details as element data
-  const element = document.querySelector('#install');
-  angular.element(element).data('details', details);
-  (document.querySelector('#install') as HTMLButtonElement).click();
-});
-browser.runtime.onStartup.addListener(() => {
-  (document.querySelector('#startup') as HTMLButtonElement).click();
+// Set up event handlers after document is ready
+angular.element(document).ready(() => {
+  // Set synchronous event handlers
+  browser.runtime.onInstalled.addListener((details) => {
+    // Store event details as element data
+    const element = document.querySelector('#install');
+    if (!element) {
+      console.error('Install element not found in background page');
+      return;
+    }
+    angular.element(element).data('details', details);
+    (element as HTMLButtonElement).click();
+  });
+
+  browser.runtime.onStartup.addListener(() => {
+    const element = document.querySelector('#startup');
+    if (!element) {
+      console.error('Startup element not found in background page');
+      return;
+    }
+    (element as HTMLButtonElement).click();
+  });
 });
