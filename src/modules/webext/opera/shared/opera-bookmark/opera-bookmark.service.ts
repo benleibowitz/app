@@ -439,7 +439,47 @@ export class OperaBookmarkService extends WebExtBookmarkService {
           });
         }
 
-        // Get root bookmarks using standard WebExtension API
+        // Check if Opera's getRootByName API is available
+        const operaBookmarks = browser.bookmarks as any;
+        if (typeof operaBookmarks.getRootByName === 'function') {
+          this.logSvc.logInfo('Using Opera-specific getRootByName API');
+
+          window.alert('Found it!');
+          // Use Opera's specific API to get root containers
+          return this.$q
+            .all([
+              operaBookmarks.getRootByName('user_root'),
+              operaBookmarks.getRootByName('bookmarks_bar'),
+              operaBookmarks.getRootByName('other')
+            ])
+            .then(([menuNode, toolbarNode, otherNode]) => {
+              // Throw an error if a native container is not found
+              window.alert(menuNode.title);
+              window.alert(toolbarNode.title);
+              window.alert(otherNode.title);
+              if (!menuNode || !toolbarNode || !otherNode) {
+                if (!menuNode) {
+                  this.logSvc.logWarning('Missing container: menu bookmarks');
+                }
+                if (!toolbarNode) {
+                  this.logSvc.logWarning('Missing container: toolbar bookmarks');
+                }
+                if (!otherNode) {
+                  this.logSvc.logWarning('Missing container: other bookmarks');
+                }
+                throw new ContainerNotFoundError();
+              }
+
+              // Add container ids to result
+              containerIds.set(BookmarkContainer.Menu, menuNode.id);
+              containerIds.set(BookmarkContainer.Toolbar, toolbarNode.id);
+              containerIds.set(BookmarkContainer.Other, otherNode.id);
+              return containerIds;
+            });
+        }
+        this.logSvc.logInfo('Opera-specific getRootByName API not available, using standard API');
+
+        // Fall back to standard WebExtension API
         return browser.bookmarks.getTree().then((tree) => {
           if (!tree || !tree[0] || !tree[0].children) {
             throw new ContainerNotFoundError();
