@@ -444,19 +444,27 @@ export class OperaBookmarkService extends WebExtBookmarkService {
         if (typeof operaBookmarks.getRootByName === 'function') {
           this.logSvc.logInfo('Using Opera-specific getRootByName API');
 
-          window.alert('Found it!');
-          // Use Opera's specific API to get root containers
+          // Use Opera's specific API to get root containers with callback pattern
           return this.$q
             .all([
-              operaBookmarks.getRootByName('user_root'),
-              operaBookmarks.getRootByName('bookmarks_bar'),
-              operaBookmarks.getRootByName('other')
+              this.$q((resolve) => {
+                operaBookmarks.getRootByName(operaBookmarks.rootName.USER_ROOT, (menuNode) => {
+                  resolve(menuNode);
+                });
+              }),
+              this.$q((resolve) => {
+                operaBookmarks.getRootByName(operaBookmarks.rootName.BOOKMARKS_BAR, (toolbarNode) => {
+                  resolve(toolbarNode);
+                });
+              }),
+              this.$q((resolve) => {
+                operaBookmarks.getRootByName(operaBookmarks.rootName.OTHER, (otherNode) => {
+                  resolve(otherNode);
+                });
+              })
             ])
             .then(([menuNode, toolbarNode, otherNode]) => {
               // Throw an error if a native container is not found
-              window.alert(menuNode.title);
-              window.alert(toolbarNode.title);
-              window.alert(otherNode.title);
               if (!menuNode || !toolbarNode || !otherNode) {
                 if (!menuNode) {
                   this.logSvc.logWarning('Missing container: menu bookmarks');
@@ -471,9 +479,9 @@ export class OperaBookmarkService extends WebExtBookmarkService {
               }
 
               // Add container ids to result
-              containerIds.set(BookmarkContainer.Menu, menuNode.id);
-              containerIds.set(BookmarkContainer.Toolbar, toolbarNode.id);
-              containerIds.set(BookmarkContainer.Other, otherNode.id);
+              containerIds.set(BookmarkContainer.Menu, (menuNode as NativeBookmarks.BookmarkTreeNode).id);
+              containerIds.set(BookmarkContainer.Toolbar, (toolbarNode as NativeBookmarks.BookmarkTreeNode).id);
+              containerIds.set(BookmarkContainer.Other, (otherNode as NativeBookmarks.BookmarkTreeNode).id);
               return containerIds;
             });
         }
