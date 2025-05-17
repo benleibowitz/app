@@ -450,11 +450,11 @@ export class OperaBookmarkService extends WebExtBookmarkService {
           const children = rootNode.children;
 
           // Find bookmark bar/toolbar folder
-          const toolbarNode = children.find((node) => node.id === '1' || node.title === 'Bookmarks Bar');
-          // Find bookmarks menu folder
-          const menuNode = children.find((node) => node.id === '2' || node.title === 'Bookmarks Menu');
+          const toolbarNode = children.find((node) => node.title.toLowerCase() === 'bookmarks bar');
+          // In Opera, there is no Bookmarks Menu. Use the Imported Bookmarks folder instead
+          const menuNode = children.find((node) => node.title.toLowerCase() === 'imported bookmarks');
           // Find other bookmarks folder
-          const otherNode = children.find((node) => node.id === '3' || node.title === 'Other Bookmarks');
+          const otherNode = children.find((node) => node.title.toLowerCase() === 'other bookmarks');
 
           // Throw an error if a native container is not found
           if (!menuNode || !otherNode || !toolbarNode) {
