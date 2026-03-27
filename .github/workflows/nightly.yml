@@ -1,16 +1,31 @@
-name: Release
+name: Nightly Build
 
 on:
+  schedule:
+    - cron: '0 1 * * *'
   workflow_dispatch:
-    inputs:
-      beta_release:
-        required: true
-        default: 'false'
 
 jobs:
-  package:
-    name: Package platforms
+  test:
+    name: Run tests
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm run test -- --coverage
+
+  nightly:
+    name: Package nightly builds
+    runs-on: ubuntu-latest
+    needs: test
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -24,10 +39,12 @@ jobs:
           java-version: '17'
 
       - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+        with:
+          packages: 'platform-tools'
 
       - name: Install cordova
         run: |
-          npm install -g cordova@12.0.0
+          sudo npm install -g cordova@12.0.0
           pushd res/android
           cordova telemetry off
           cordova prepare
@@ -39,12 +56,12 @@ jobs:
       - name: Create Chromium package
         run: npm run package:chromium
         env:
-          BETA: ${{ github.event.inputs.beta_release == 'true' }}
+          BETA: true
 
       - name: Create Firefox package
         run: npm run package:firefox
         env:
-          BETA: ${{ github.event.inputs.beta_release == 'true' }}
+          BETA: true
 
       - name: Create Android package
         run: npm run package:android
@@ -52,19 +69,29 @@ jobs:
           SIGNING_ALIAS: ${{ secrets.ANDROID_SIGNING_ALIAS }}
           SIGNING_PASSWORD: ${{ secrets.ANDROID_SIGNING_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
-          BETA: ${{ github.event.inputs.beta_release == 'true' }}
+          BETA: true
 
       - name: Set release version env var
-        run: |
-          echo "RELEASE_VERSION=$(cat PACKAGE_VERSION)" >> $GITHUB_ENV
+        run: echo "RELEASE_VERSION=$(cat PACKAGE_VERSION)" >> $GITHUB_ENV
 
-      - name: Create release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+      - name: Delete old nightly release assets
+        run: |
+          gh release view nightly --json assets --jq '.assets[].name' 2>/dev/null | while read -r asset; do
+            gh release delete-asset nightly "$asset" --yes
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update nightly release
+        uses: softprops/action-gh-release@v1
         with:
-          draft: true
-          prerelease: ${{ github.event.inputs.beta_release == 'true' }}
-          tag_name: v${{ env.RELEASE_VERSION }}
-          body_path: CHANGELOG.md
+          name: Nightly Build
+          tag_name: nightly
+          prerelease: true
+          body: |
+            Automated nightly build from the `master` branch.
+
+            Built on: ${{ github.run_id }} · ${{ github.sha }}
           files: |
             dist/xbrowsersync_${{ env.RELEASE_VERSION }}_chromium.zip
             dist/xbrowsersync_${{ env.RELEASE_VERSION }}_firefox.xpi
